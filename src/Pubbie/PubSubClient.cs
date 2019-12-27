@@ -8,6 +8,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Bedrock.Framework;
 using Bedrock.Framework.Protocols;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +20,7 @@ namespace Pubbie
         private long _nextOperationId;
         private ProtocolWriter<Message> _writer;
         private ProtocolReader<Message> _reader;
+        private ConnectionContext _connection;
         private ConcurrentDictionary<long, TaskCompletionSource<object>> _operations = new ConcurrentDictionary<long, TaskCompletionSource<object>>();
         private ConcurrentDictionary<string, Func<string, ReadOnlyMemory<byte>, Task>> _topics = new ConcurrentDictionary<string, Func<string, ReadOnlyMemory<byte>, Task>>();
         private Task _readingTask;
@@ -46,10 +48,10 @@ namespace Pubbie
         public async Task ConnectAsync(EndPoint endPoint)
         {
             // REVIEW: Should this be a static factory?
-            var connection = await _client.ConnectAsync(endPoint);
+            _connection = await _client.ConnectAsync(endPoint);
             var protocol = new MessageProtocol();
-            _writer = connection.CreateWriter(protocol);
-            _reader = connection.CreateReader(protocol);
+            _writer = _connection.CreateWriter(protocol);
+            _reader = _connection.CreateReader(protocol);
             _readingTask = ProcessReadsAsync();
         }
 
@@ -218,7 +220,7 @@ namespace Pubbie
 
         public async ValueTask DisposeAsync()
         {
-            if (_reader == null)
+            if (_connection == null)
             {
                 return;
             }
@@ -236,6 +238,8 @@ namespace Pubbie
                 // Cancel all pending operations
                 operation.Value.TrySetCanceled();
             }
+
+            await _connection.DisposeAsync();
         }
     }
 }
