@@ -8,7 +8,7 @@
     <PackageReleaseNotes>https://github.com/davidfowl/Pubbie/releases</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>cloud microservice networking sockets websockets tcp</PackageTags>
+    <PackageTags>cloud microservice networking sockets pubsub</PackageTags>
   </PropertyGroup>
   <ItemGroup Condition="$(IsPackable) == 'true'">
     <PackageReference Include="Nerdbank.GitVersioning">
