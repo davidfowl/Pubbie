@@ -13,8 +13,8 @@ namespace Pubbie
         public override async Task OnConnectedAsync(ConnectionContext connection)
         {
             var protocol = new MessageProtocol();
-            var reader = Protocol.CreateReader(connection, protocol);
-            var writer = Protocol.CreateWriter(connection, protocol);
+            var reader = connection.CreateReader(protocol);
+            var writer = connection.CreateWriter(protocol);
 
             while (true)
             {
