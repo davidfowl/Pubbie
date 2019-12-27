@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bedrock.Framework" Version="0.1.9-alpha.gdd098a4ad7" />
+  </ItemGroup>
+
+</Project>
