@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <PackageDescription>A high performance pubsub client/server implementation for .NET Core.</PackageDescription>
+    <Authors>David Fowler</Authors>
   </PropertyGroup>
 
   <ItemGroup>
