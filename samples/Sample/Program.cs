@@ -24,17 +24,12 @@ namespace Sample
             var topics = new string[]
             {
                 "topic1",
-                "topic2"
+                "topic2",
+                "topic3"
             };
 
             foreach (var topic in topics)
             {
-                await client.SubscribeAsync(topic, (t, data) =>
-                {
-                    Console.WriteLine($"[Client][{t}] <- " + Encoding.UTF8.GetString(data.Span));
-                    return Task.CompletedTask;
-                });
-
                 await client.SubscribeAsync(topic, (t, data) =>
                 {
                     Console.WriteLine($"[Client][{t}] <- " + Encoding.UTF8.GetString(data.Span));

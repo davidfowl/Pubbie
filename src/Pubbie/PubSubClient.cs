@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Bedrock.Framework;
 using Bedrock.Framework.Protocols;
@@ -109,6 +111,48 @@ namespace Pubbie
             {
                 await _reader.DisposeAsync();
             }
+        }
+
+        public ChannelWriter<T> CreateWriter<T>(string topic, Func<T, ReadOnlyMemory<byte>> serialize)
+        {
+            var channel = Channel.CreateBounded<T>(1);
+
+            async Task ProcessMessages()
+            {
+                await foreach (var item in channel.Reader.ReadAllAsync())
+                {
+                    var message = serialize(item);
+
+                    await PublishAsync(topic, message);
+                }
+            }
+
+            Task.Run(ProcessMessages);
+
+            return channel.Writer;
+        }
+
+        public async IAsyncEnumerable<T> CreateReader<T>(string topic, Func<ReadOnlyMemory<byte>, T> deserialize)
+        {
+            var channel = Channel.CreateBounded<T>(1);
+
+            await SubscribeAsync(topic, async (t, data) =>
+            {
+                while (await channel.Writer.WaitToWriteAsync())
+                {
+                    if (channel.Writer.TryWrite(deserialize(data)))
+                    {
+                        break;
+                    }
+                }
+            });
+
+            await foreach(var item in channel.Reader.ReadAllAsync())
+            {
+                yield return item;
+            }
+
+            await UnsubscribeAsync(topic);
         }
 
         public async Task SubscribeAsync(string topic, Func<string, ReadOnlyMemory<byte>, Task> callback)
