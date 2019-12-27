@@ -19,7 +19,6 @@ namespace Pubbie
         private ProtocolReader<Message> _reader;
         private ConcurrentDictionary<long, TaskCompletionSource<object>> _operations = new ConcurrentDictionary<long, TaskCompletionSource<object>>();
         private ConcurrentDictionary<string, Func<string, ReadOnlyMemory<byte>, Task>> _topics = new ConcurrentDictionary<string, Func<string, ReadOnlyMemory<byte>, Task>>();
-        private EndPoint _boundEndPoint;
         private Task _readingTask;
 
         public PubSubClient(Client client)
@@ -44,11 +43,11 @@ namespace Pubbie
 
         public async Task ConnectAsync(EndPoint endPoint)
         {
-            _boundEndPoint = endPoint;
+            // REVIEW: Should this be a static factory?
             var connection = await _client.ConnectAsync(endPoint);
             var protocol = new MessageProtocol();
-            _writer = Protocol.CreateWriter(connection, protocol);
-            _reader = Protocol.CreateReader(connection, protocol);
+            _writer = connection.CreateWriter(protocol);
+            _reader = connection.CreateReader(protocol);
             _readingTask = ProcessReadsAsync();
         }
 
