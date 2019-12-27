@@ -188,6 +188,8 @@ namespace Pubbie
 
             foreach (var operation in _operations)
             {
+                _operations.TryRemove(operation.Key, out _);
+
                 // Cancel all pending operations
                 operation.Value.TrySetCanceled();
             }
