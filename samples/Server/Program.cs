@@ -1,16 +1,12 @@
-﻿using System;
-using System.Net;
-using System.Text;
+﻿using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Bedrock.Framework;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Connections;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.AspNetCore.Hosting;
 using Pubbie;
-using Microsoft.AspNetCore.Builder;
-using System.Linq;
-using System.Text.Json;
 
 namespace Sample
 {
