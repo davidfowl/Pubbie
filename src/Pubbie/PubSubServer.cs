@@ -18,16 +18,16 @@ namespace Pubbie
 
         public override async Task OnConnectedAsync(ConnectionContext connection)
         {
-            var protocol = new MessageProtocol();
-            var reader = connection.CreateReader(protocol);
-            var writer = connection.CreateWriter(protocol);
+            var protocol = new MessageReaderWriter();
+            var reader = connection.CreateReader();
+            var writer = connection.CreateWriter();
             var connectionTopics = new List<string>();
 
             try
             {
                 while (true)
                 {
-                    var result = await reader.ReadAsync();
+                    var result = await reader.ReadAsync(protocol);
                     var message = result.Message;
 
                     if (result.IsCompleted)
@@ -53,11 +53,11 @@ namespace Pubbie
                                     // TODO: Use WhenAll
                                     foreach (var pair in topic)
                                     {
-                                        await pair.Value.WriteAsync(data);
+                                        await pair.Value.WriteAsync(protocol, data);
                                     }
                                 }
 
-                                await writer.WriteAsync(new Message
+                                await writer.WriteAsync(protocol, new Message
                                 {
                                     Id = message.Id,
                                     Topic = message.Topic,
@@ -73,7 +73,7 @@ namespace Pubbie
 
                                 connectionTopics.Add(message.Topic);
 
-                                await writer.WriteAsync(new Message
+                                await writer.WriteAsync(protocol, new Message
                                 {
                                     Id = message.Id,
                                     Topic = message.Topic,
@@ -85,7 +85,7 @@ namespace Pubbie
                             {
                                 RemoveTopic(connection, connectionTopics, message.Topic);
 
-                                await writer.WriteAsync(new Message
+                                await writer.WriteAsync(protocol, new Message
                                 {
                                     Id = message.Id,
                                     Topic = message.Topic,

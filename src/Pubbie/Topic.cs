@@ -8,9 +8,9 @@ using System.Threading;
 
 namespace Pubbie
 {
-    public class Topic : IEnumerable<KeyValuePair<string, ProtocolWriter<Message>>>
+    public class Topic : IEnumerable<KeyValuePair<string, ProtocolWriter>>
     {
-        private readonly ConcurrentDictionary<string, ProtocolWriter<Message>> _clients = new ConcurrentDictionary<string, ProtocolWriter<Message>>();
+        private readonly ConcurrentDictionary<string, ProtocolWriter> _clients = new ConcurrentDictionary<string, ProtocolWriter>();
         private long _subscriberCount;
         private long _publishCount;
 
@@ -18,7 +18,7 @@ namespace Pubbie
 
         public long PublishCount => _publishCount;
 
-        public IEnumerator<KeyValuePair<string, ProtocolWriter<Message>>> GetEnumerator()
+        public IEnumerator<KeyValuePair<string, ProtocolWriter>> GetEnumerator()
         {
             return _clients.GetEnumerator();
         }
@@ -40,7 +40,7 @@ namespace Pubbie
             }
         }
 
-        public void Add(string key, ProtocolWriter<Message> writer)
+        public void Add(string key, ProtocolWriter writer)
         {
             if (_clients.TryAdd(key, writer))
             {

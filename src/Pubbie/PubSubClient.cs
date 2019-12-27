@@ -18,12 +18,14 @@ namespace Pubbie
     {
         private readonly Client _client;
         private long _nextOperationId;
-        private ProtocolWriter<Message> _writer;
-        private ProtocolReader<Message> _reader;
+        private ProtocolWriter _writer;
+        private ProtocolReader _reader;
         private ConnectionContext _connection;
         private ConcurrentDictionary<long, TaskCompletionSource<object>> _operations = new ConcurrentDictionary<long, TaskCompletionSource<object>>();
         private ConcurrentDictionary<string, Func<string, ReadOnlyMemory<byte>, Task>> _topics = new ConcurrentDictionary<string, Func<string, ReadOnlyMemory<byte>, Task>>();
         private Task _readingTask;
+        private MessageReaderWriter _protocol = new MessageReaderWriter();
+
 
         public PubSubClient(Client client)
         {
@@ -49,9 +51,8 @@ namespace Pubbie
         {
             // REVIEW: Should this be a static factory?
             _connection = await _client.ConnectAsync(endPoint);
-            var protocol = new MessageProtocol();
-            _writer = _connection.CreateWriter(protocol);
-            _reader = _connection.CreateReader(protocol);
+            _writer = _connection.CreateWriter();
+            _reader = _connection.CreateReader();
             _readingTask = ProcessReadsAsync();
         }
 
@@ -61,7 +62,7 @@ namespace Pubbie
             {
                 while (true)
                 {
-                    var result = await _reader.ReadAsync();
+                    var result = await _reader.ReadAsync(_protocol);
                     var message = result.Message;
 
                     if (result.IsCompleted || result.IsCanceled)
@@ -171,7 +172,7 @@ namespace Pubbie
 
             _topics[topic] = callback;
 
-            await _writer.WriteAsync(new Message
+            await _writer.WriteAsync(_protocol, new Message
             {
                 Id = id,
                 MessageType = MessageType.Subscribe,
@@ -188,7 +189,7 @@ namespace Pubbie
             var operation = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             _operations[id] = operation;
 
-            await _writer.WriteAsync(new Message
+            await _writer.WriteAsync(_protocol, new Message
             {
                 Id = id,
                 MessageType = MessageType.Unsubscribe,
@@ -207,7 +208,7 @@ namespace Pubbie
             var operation = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             _operations[id] = operation;
 
-            await _writer.WriteAsync(new Message
+            await _writer.WriteAsync(_protocol, new Message
             {
                 Id = id,
                 MessageType = MessageType.Publish,

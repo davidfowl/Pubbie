@@ -6,7 +6,7 @@ using Bedrock.Framework.Protocols;
 
 namespace Pubbie
 {
-    public class MessageProtocol : IProtocolReader<Message>, IProtocolWriter<Message>
+    public class MessageReaderWriter : IMessageReader<Message>, IMessageWriter<Message>
     {
         public bool TryParseMessage(in ReadOnlySequence<byte> input, out SequencePosition consumed, out SequencePosition examined, out Message message)
         {
