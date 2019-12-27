@@ -19,7 +19,7 @@ namespace Pubbie
         private ProtocolReader<Message> _reader;
         private ConcurrentDictionary<long, TaskCompletionSource<object>> _operations = new ConcurrentDictionary<long, TaskCompletionSource<object>>();
         private ConcurrentDictionary<string, Func<string, ReadOnlyMemory<byte>, Task>> _topics = new ConcurrentDictionary<string, Func<string, ReadOnlyMemory<byte>, Task>>();
-        private IPEndPoint _boundEndPoint;
+        private EndPoint _boundEndPoint;
         private Task _readingTask;
 
         public PubSubClient(Client client)
@@ -42,7 +42,7 @@ namespace Pubbie
                 .Build();
         }
 
-        public async Task ConnectAsync(IPEndPoint endPoint)
+        public async Task ConnectAsync(EndPoint endPoint)
         {
             _boundEndPoint = endPoint;
             var connection = await _client.ConnectAsync(endPoint);
@@ -65,8 +65,6 @@ namespace Pubbie
                     {
                         break;
                     }
-
-                    Console.WriteLine($"[{_boundEndPoint}]: " + message);
 
                     switch (message.MessageType)
                     {

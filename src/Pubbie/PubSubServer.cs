@@ -9,12 +9,6 @@ namespace Pubbie
     public class PubSubServer : ConnectionHandler
     {
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ProtocolWriter<Message>>> _topics = new ConcurrentDictionary<string, ConcurrentDictionary<string, ProtocolWriter<Message>>>();
-        private readonly string _serverName;
-
-        public PubSubServer(string serverName)
-        {
-            _serverName = serverName;
-        }
 
         public override async Task OnConnectedAsync(ConnectionContext connection)
         {
@@ -31,8 +25,6 @@ namespace Pubbie
                 {
                     break;
                 }
-
-                Console.WriteLine($"[{_serverName}]: {message}");
 
                 switch (message.MessageType)
                 {

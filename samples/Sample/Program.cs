@@ -64,8 +64,7 @@ namespace Sample
             var server = new ServerBuilder(sp)
                    .UseSockets(sockets =>
                    {
-                       var address = new IPEndPoint(IPAddress.Any, 8000);
-                       sockets.Listen(address, builder => builder.Run(new PubSubServer(address.ToString()).OnConnectedAsync));
+                       sockets.ListenAnyIP(8000, builder => builder.UseConnectionHandler<PubSubServer>());
 
                    }).Build();
 
