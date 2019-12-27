@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Bedrock.Framework" Version="0.1.9-alpha.gdd098a4ad7" />
+    <PackageReference Include="Bedrock.Framework" Version="0.1.12-alpha.g5bc2e97154" />
   </ItemGroup>
 
 </Project>
