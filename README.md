@@ -14,6 +14,7 @@ To use CI builds add the following nuget feed:
 <configuration>
     <packageSources>
         <clear />
+        <add key="bedrockframework" value="https://f.feedz.io/davidfowl/bedrockframework/nuget/index.json" />
         <add key="pubbie" value="https://f.feedz.io/davidfowl/pubbie/nuget/index.json" />
         <add key="NuGet.org" value="https://api.nuget.org/v3/index.json" />
     </packageSources>
