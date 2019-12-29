@@ -50,7 +50,7 @@ namespace Pubbie
         public async Task ConnectAsync(EndPoint endPoint)
         {
             // REVIEW: Should this be a static factory?
-            _connection = await _client.ConnectAsync(endPoint);
+            _connection = await _client.ConnectAsync(endPoint).ConfigureAwait(false);
             _writer = _connection.CreateWriter();
             _reader = _connection.CreateReader();
             _readingTask = ProcessReadsAsync();
@@ -58,61 +58,54 @@ namespace Pubbie
 
         private async Task ProcessReadsAsync()
         {
-            try
+            while (true)
             {
-                while (true)
+                var result = await _reader.ReadAsync(_protocol);
+                var message = result.Message;
+
+                if (result.IsCompleted || result.IsCanceled)
                 {
-                    var result = await _reader.ReadAsync(_protocol);
-                    var message = result.Message;
-
-                    if (result.IsCompleted || result.IsCanceled)
-                    {
-                        break;
-                    }
-
-                    switch (message.MessageType)
-                    {
-                        case MessageType.Error:
-                            {
-                                if (_operations.TryRemove(message.Id, out var operation))
-                                {
-                                    if (message.Payload.Length > 0)
-                                    {
-                                        operation.TrySetException(new Exception(Encoding.UTF8.GetString(message.Payload.Span)));
-                                    }
-                                    else
-                                    {
-                                        operation.TrySetException(new Exception($"Operation {message.Id} failed"));
-                                    }
-                                }
-                            }
-                            break;
-                        case MessageType.Success:
-                            {
-                                if (_operations.TryRemove(message.Id, out var operation))
-                                {
-                                    operation.TrySetResult(null);
-                                }
-                            }
-                            break;
-                        case MessageType.Data:
-                            if (_topics.TryGetValue(message.Topic, out var callback))
-                            {
-                                // REVIEW: This will deadlock if the client is used in the 
-                                // callback
-                                await callback(message.Topic, message.Payload);
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-
-                    _reader.Advance();
+                    break;
                 }
-            }
-            finally
-            {
-                await _reader.DisposeAsync();
+
+                switch (message.MessageType)
+                {
+                    case MessageType.Error:
+                        {
+                            if (_operations.TryRemove(message.Id, out var operation))
+                            {
+                                if (message.Payload.Length > 0)
+                                {
+                                    operation.TrySetException(new Exception(Encoding.UTF8.GetString(message.Payload.Span)));
+                                }
+                                else
+                                {
+                                    operation.TrySetException(new Exception($"Operation {message.Id} failed"));
+                                }
+                            }
+                        }
+                        break;
+                    case MessageType.Success:
+                        {
+                            if (_operations.TryRemove(message.Id, out var operation))
+                            {
+                                operation.TrySetResult(null);
+                            }
+                        }
+                        break;
+                    case MessageType.Data:
+                        if (_topics.TryGetValue(message.Topic, out var callback))
+                        {
+                            // REVIEW: This will deadlock if the client is used in the 
+                            // callback
+                            await callback(message.Topic, message.Payload);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+                _reader.Advance();
             }
         }
 
@@ -150,7 +143,7 @@ namespace Pubbie
                 }
             });
 
-            await foreach(var item in channel.Reader.ReadAllAsync())
+            await foreach (var item in channel.Reader.ReadAllAsync())
             {
                 yield return item;
             }
@@ -226,11 +219,13 @@ namespace Pubbie
                 return;
             }
 
-            await _writer.DisposeAsync();
+            await _writer.DisposeAsync().ConfigureAwait(false);
 
             _reader.Connection.Transport.Input.CancelPendingRead();
 
-            await _readingTask;
+            await _readingTask.ConfigureAwait(false);
+
+            await _reader.DisposeAsync().ConfigureAwait(false);
 
             foreach (var operation in _operations)
             {
@@ -240,7 +235,7 @@ namespace Pubbie
                 operation.Value.TrySetCanceled();
             }
 
-            await _connection.DisposeAsync();
+            await _connection.DisposeAsync().ConfigureAwait(false);
         }
     }
 }
