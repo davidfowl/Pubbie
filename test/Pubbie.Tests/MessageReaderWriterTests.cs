@@ -155,5 +155,107 @@ namespace Pubbie.Tests
                 IdBytesCount + MessageTypeBytesCount + LengthBytesCount + topic.Length + LengthBytesCount + payload.Length,
                 buffer.WrittenCount);
         }
+
+        [Fact]
+        public void TryParseMessage_ShouldSucceed_ForZeroMessage()
+        {
+            // Arrange
+            var reader = new MessageReaderWriter();
+            var buffer = new byte[] {
+                0,0,0,0,0,0,0,0, // ID
+                0,               // Type
+                0,0,0,0,         // Length of topic
+                0,0,0,0,         // Length of payload
+            };
+
+            var input = new ReadOnlySequence<byte>(buffer);
+            Assert.True(reader.TryParseMessage(in input, out var _, out var _, out var _));
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(long.MaxValue)]
+        [InlineData(long.MinValue)]
+        public void TryParseMessage_ShouldParseId(long id)
+        {
+            // Arrange
+            var reader = new MessageReaderWriter();
+            var buffer = new byte[IdBytesCount + MessageTypeBytesCount + LengthBytesCount + LengthBytesCount];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer.AsSpan(0, IdBytesCount), id);
+            var input = new ReadOnlySequence<byte>(buffer);
+
+            // Act & Assert
+            Assert.True(reader.TryParseMessage(in input, out var _, out var _, out var message));
+            Assert.Equal(id, message.Id);
+        }
+
+        [Theory]
+        [InlineData(0, MessageType.Error)]
+        [InlineData(1, MessageType.Success)]
+        [InlineData(2, MessageType.Data)]
+        [InlineData(3, MessageType.Publish)]
+        [InlineData(4, MessageType.Subscribe)]
+        [InlineData(5, MessageType.Unsubscribe)]
+        public void TryParseMessage_ShouldParseMessageType(byte messageTypeByte, MessageType expectedMessageType)
+        {
+            // Arrange
+            var reader = new MessageReaderWriter();
+            var buffer = new byte[IdBytesCount + MessageTypeBytesCount + LengthBytesCount + LengthBytesCount];
+            buffer[IdBytesCount] = messageTypeByte;
+            var input = new ReadOnlySequence<byte>(buffer);
+
+            // Act & Assert
+            Assert.True(reader.TryParseMessage(in input, out var _, out var _, out var message));
+            Assert.Equal(expectedMessageType, message.MessageType);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("foo")]
+        public void TryParseMessage_ShouldParseTopic(string topic)
+        {
+            // Arrange
+            var topicLength = Encoding.UTF8.GetByteCount(topic);
+            var reader = new MessageReaderWriter();
+            var buffer = new byte[IdBytesCount + MessageTypeBytesCount + LengthBytesCount + topicLength + LengthBytesCount];
+
+            BinaryPrimitives.WriteInt32LittleEndian(
+                buffer.AsSpan(IdBytesCount + MessageTypeBytesCount, LengthBytesCount),
+                topicLength);
+            Encoding.UTF8.GetBytes(
+                topic,
+                buffer.AsSpan(IdBytesCount + MessageTypeBytesCount + LengthBytesCount, topicLength));
+
+            var input = new ReadOnlySequence<byte>(buffer);
+
+            // Act & Assert
+            Assert.True(reader.TryParseMessage(in input, out var _, out var _, out var message));
+            Assert.Equal(topic, message.Topic);
+        }
+
+        [Theory]
+        [InlineData(new byte[0])]
+        [InlineData(new byte[] { 1, 2, 42 })]
+        public void TryParseMessage_ShouldParsePayload(byte[] payload)
+        {
+            // Arrange
+            var reader = new MessageReaderWriter();
+            var buffer = new byte[IdBytesCount + MessageTypeBytesCount + LengthBytesCount + LengthBytesCount + payload.Length];
+
+            BinaryPrimitives.WriteInt32LittleEndian(
+                buffer.AsSpan(IdBytesCount + MessageTypeBytesCount + LengthBytesCount, LengthBytesCount),
+                payload.Length);
+            Array.Copy(
+                payload, 0,
+                buffer, IdBytesCount + MessageTypeBytesCount + LengthBytesCount + LengthBytesCount,
+                payload.Length);
+
+            var input = new ReadOnlySequence<byte>(buffer);
+
+            // Act & Assert
+            Assert.True(reader.TryParseMessage(in input, out var _, out var _, out var message));
+            Assert.Equal<byte>(payload, message.Payload.ToArray());
+        }
     }
 }
