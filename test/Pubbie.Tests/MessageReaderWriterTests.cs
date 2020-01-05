@@ -156,20 +156,98 @@ namespace Pubbie.Tests
                 buffer.WrittenCount);
         }
 
-        [Fact]
-        public void TryParseMessage_ShouldSucceed_ForZeroMessage()
-        {
-            // Arrange
-            var reader = new MessageReaderWriter();
-            var buffer = new byte[] {
+        [Theory]
+        [InlineData("All 0 message with extra bytes",
+            new byte[] {
                 0,0,0,0,0,0,0,0, // ID
                 0,               // Type
                 0,0,0,0,         // Length of topic
                 0,0,0,0,         // Length of payload
-            };
-
+                0,0,0            // Extra bytes not part of the message
+            },
+            IdBytesCount + MessageTypeBytesCount + LengthBytesCount + LengthBytesCount)]
+        [InlineData("Full message with extra Bytes",
+            new byte[] {
+                0,0,0,0,0,0,0,1, // ID
+                3,               // Type
+                3,0,0,0,         // Length of topic
+                0,0,0,           // Topic
+                1,0,0,0,         // Length of payload
+                0,               // Payload
+                0,0,0            // Extra bytes not part of the message
+            },
+            IdBytesCount + MessageTypeBytesCount + LengthBytesCount + 3 + LengthBytesCount + 1)]
+        //TODO: Should the next 2 tests fail, as with an optional payload you can't tell the purpose of those bytes (lenght of payload or next message?)
+        [InlineData("Missing Length of Payload",
+           new byte[] {
+                0,0,0,0,0,0,0,1, // ID
+                3,               // Type
+                3,0,0,0,         // Length of topic
+                0,0,0,           // Topic
+           },
+           IdBytesCount + MessageTypeBytesCount + LengthBytesCount + 3,
+           true)]
+        [InlineData("Truncated Length of Payload",
+           new byte[] {
+                0,0,0,0,0,0,0,1, // ID
+                3,               // Type
+                3,0,0,0,         // Length of topic
+                0,0,0,           // Topic
+                1,0,0,           // Truncated Length of payload
+           },
+           IdBytesCount + MessageTypeBytesCount + LengthBytesCount + 3,
+           true)]
+        public void TryParseMessage_OnSuccess_ShouldAdvanceConsumedAndExamined(string _, byte[] buffer, int expectedConsumedInteger, bool examinedUpToEnd = false)
+        {
+            // Arrange
+            var reader = new MessageReaderWriter();
             var input = new ReadOnlySequence<byte>(buffer);
-            Assert.True(reader.TryParseMessage(in input, out var _, out var _, out var _));
+            var expectedConsumed = new SequencePosition(buffer, expectedConsumedInteger);
+            var expectedExamined = examinedUpToEnd ? input.End : expectedConsumed;
+
+            // Act & Assert
+            Assert.True(reader.TryParseMessage(in input, out var consumed, out var examined, out var _));
+            Assert.Equal(expectedConsumed, consumed);
+            Assert.Equal(expectedExamined, examined);
+        }
+
+        [Theory]
+        [InlineData("Truncated ID",
+           new byte[] {
+                0,0,0            // Truncated ID
+           })]
+        [InlineData("Truncated Length of topic", 
+           new byte[] {
+                0,0,0,0,0,0,0,1, // ID
+                3,               // Type
+                0,0,0,           // Truncated Length of topic
+           })]
+        [InlineData("Truncated Topic",
+           new byte[] {
+                0,0,0,0,0,0,0,1, // ID
+                3,               // Type
+                3,0,0,0,         // Length of topic
+                0,0,             // Truncated Topic
+           })]
+        [InlineData("Truncated Payload",
+           new byte[] {
+                0,0,0,0,0,0,0,1, // ID
+                3,               // Type
+                3,0,0,0,         // Length of topic
+                0,0,0,           // Topic
+                2,0,0,0,         // Length of payload
+                0,               // Truncated Payload
+           })]
+        public void TryParseMessage_ShouldFail_AndNotAdvance_ForAPartialMessage(string _, byte[] buffer)
+        {
+            // Arrange
+            var reader = new MessageReaderWriter();
+            var input = new ReadOnlySequence<byte>(buffer);
+
+            // Act & Assert
+            Assert.False(reader.TryParseMessage(in input, out var consumed, out var examined, out var _));
+            Assert.Equal(input.Start, consumed);
+            Assert.Equal(input.End, examined);
         }
 
         [Theory]
@@ -208,6 +286,23 @@ namespace Pubbie.Tests
             // Act & Assert
             Assert.True(reader.TryParseMessage(in input, out var _, out var _, out var message));
             Assert.Equal(expectedMessageType, message.MessageType);
+        }
+
+        [Fact]
+        public void TryParseMessage_WithInvalidMessageType_ShouldNotFail()
+        {
+            //TODO: Should the parsing fail for an invalid MessageType?
+
+            // Arrange
+            var reader = new MessageReaderWriter();
+            var buffer = new byte[IdBytesCount + MessageTypeBytesCount + LengthBytesCount + LengthBytesCount];
+            const int invalidMessageType = 6;
+            buffer[IdBytesCount] = invalidMessageType;
+            var input = new ReadOnlySequence<byte>(buffer);
+
+            // Act & Assert
+            Assert.True(reader.TryParseMessage(in input, out var _, out var _, out var message));
+            Assert.Equal(invalidMessageType, (int)message.MessageType);
         }
 
         [Theory]

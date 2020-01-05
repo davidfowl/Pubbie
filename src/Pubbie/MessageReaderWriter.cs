@@ -61,10 +61,15 @@ namespace Pubbie
                 var payload = input.Slice(reader.Position, length);
                 message.Payload = payload.IsSingleSegment ? payload.First : payload.ToArray();
                 reader.Advance(length);
-            }
 
-            consumed = reader.Position;
-            examined = consumed;
+                consumed = reader.Position;
+                examined = consumed;
+            }
+            else
+            {
+                consumed = reader.Position;
+                examined = input.End;
+            }
 
             return true;
         }
